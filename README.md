@@ -1,7 +1,7 @@
 This code represents some feature selection algorithms in matlab
 Reference: shorturl.at/quBLT
 
-Training model used 1) artificial neural network and 2) ensemble learning method
+O Training model used 1) artificial neural network and 2) ensemble learning method
 
 O Feature selection algorithms
 

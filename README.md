@@ -1,4 +1,7 @@
 This code represents some feature selection algorithms in matlab
+
+Still updating (2021. 04. 27)
+
 Reference: shorturl.at/quBLT
 
 1. Filter type

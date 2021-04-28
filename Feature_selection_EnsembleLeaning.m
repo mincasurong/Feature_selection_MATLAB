@@ -22,7 +22,7 @@ find(isinf(chi.scores)) % 'scores' does not include Inf values
 % If scores includes Inf values, you can replace Inf by a larg numeric number
 
 figure('color','w')
-subplot(221);
+subplot(231);
 bar(chi.scores(chi.idx)); hold on;
 xlabel('Predictor rank'); ylabel('Predictor importance score'); legend('Fscchi2')
 
@@ -36,7 +36,7 @@ FSresult.chi = [chi.idx', chi.scores(chi.idx)'];
 
 [mrmr.idx, mrmr.scores] = fscmrmr(X,Y);
 
-subplot(222);
+subplot(232);
 bar(mrmr.scores(mrmr.idx)); hold on;
 xlabel('Predictor rank'); ylabel('Predictor importance score'); legend('Fscmrmr')
 
@@ -49,7 +49,7 @@ FSresult.mrmr = [mrmr.idx', mrmr.scores(mrmr.idx)'];
 % Univariate feature ranking for regression using F-tests
 [f_test.idx, f_test.scores] = fsrftest(X,double(cell2mat(Y)));
 
-subplot(223);
+subplot(233);
 bar(f_test.scores(f_test.idx)); hold on;
 xlabel('Predictor rank'); ylabel('Predictor importance score'); legend('FSRFTEST')
 
@@ -62,7 +62,7 @@ FSresult.f_test = [f_test.idx', f_test.scores(f_test.idx)'];
 % Rank importance of predictors using ReliefF algorithm
 [reli.idx, reli.scores] = relieff(X,double(cell2mat(Y)),10);
 
-subplot(224);
+subplot(234);
 bar(reli.scores(reli.idx)); hold on;
 xlabel('Predictor rank'); ylabel('Predictor importance score'); legend('Relieff')
 
@@ -70,9 +70,20 @@ xlabel('Predictor rank'); ylabel('Predictor importance score'); legend('Relieff'
 % Plot the infinite importances
 reli.idxInf = find(isinf(reli.scores)), bar(reli.scores(reli.idx(length(reli.idxInf)+1))*ones(length(reli.idxInf),1))
 FSresult.f_test = [reli.idx', reli.scores(reli.idx)'];
-drawnow;
+
+%% [Embedded type EX 1] ================== fitcensemble ==============
+t = templateTree('Reproducible',true); % For reproducibiliy of random predictor selections
+Mdl = fitcensemble(X,double(cell2mat(Y)),'Method','Bag','NumLearningCycles',50,'Learners',t);
+fitcen.scores = oobPermutedPredictorImportance(Mdl);
+[~, fitcen.idx] = sort(fitcen.scores,'descend');
+
+subplot(235);
+bar(fitcen.scores(fitcen.idx));
+xlabel('Predictor rank'); ylabel('Predictor importance score'); legend('fitcen')
+
 %% Feature selection result
-FSresult.idx = [chi.idx', mrmr.idx', f_test.idx', reli.idx'];
+drawnow;
+FSresult.idx = [chi.idx', mrmr.idx', f_test.idx', reli.idx', fitcen.idx'];
 
 %% Devide training and testset
 
@@ -96,12 +107,17 @@ dataset4 = [X(:,reli.idx(:,1:10)), double(cell2mat(Y))]; % features from relieff
 Training4 = dataset4(1:round(length(dataset4)*0.7),:);
 Test4 = dataset4(round(length(dataset4)*0.7)+1:end,1:end-1);
 
+dataset5 = [X(:,reli.idx(:,1:10)), double(cell2mat(Y))]; % features from fitcen
+Training5 = dataset5(1:round(length(dataset5)*0.7),:);
+Test5 = dataset5(round(length(dataset5)*0.7)+1:end,1:end-1);
+
 %% Model Training (Ensemble learning - Bagging tree)
 [trainedClassifier, validationAccuracy]   = trainClassifier(Training);   % all inputs
 [trainedClassifier1, validationAccuracy1] = trainClassifier1(Training1); % features from chi
 [trainedClassifier2, validationAccuracy2] = trainClassifier1(Training2); % features from mrmr
 [trainedClassifier3, validationAccuracy3] = trainClassifier1(Training3); % features from ftest
 [trainedClassifier4, validationAccuracy4] = trainClassifier1(Training4); % features from relieff
+[trainedClassifier5, validationAccuracy5] = trainClassifier1(Training5); % features from fitcen
 
 %% Test
 ANSWER = dataset_origin(round(length(dataset_origin)*0.7)+1:end,end);
@@ -110,12 +126,13 @@ y1 = trainedClassifier1.predictFcn(Test1);  % features from chi
 y2 = trainedClassifier2.predictFcn(Test2);  % features from mrmr
 y3 = trainedClassifier3.predictFcn(Test3);  % features from ftest
 y4 = trainedClassifier4.predictFcn(Test4);  % features from relieff
+y5 = trainedClassifier5.predictFcn(Test5);  % features from fitcen
 
 % One-hot encoding
 N = length(ANSWER); 
 ANSWERn = zeros(N,2); yn = ANSWERn; 
-yn1 = yn;  yn2 = yn;  yn3 = yn;  yn4 = yn;
-jj = 1; j = 1; j1 = 1; j2= 1; j3= 1; j4 = 1;
+yn1 = yn;  yn2 = yn;  yn3 = yn;  yn4 = yn; yn5 = yn;
+jj = 1; j = 1; j1 = 1; j2= 1; j3= 1; j4 = 1; j5 = 1;
 for k=1:length(ANSWER)
     if ANSWER(k) == 98, ANSWERn(jj,1) = 1;  else, ANSWERn(jj,2) = 1;  end; jj = jj+1;
     if y(k) == 98,           yn(j,1) = 1;   else,       yn(j,2) = 1;  end;  j =  j+1;
@@ -123,6 +140,7 @@ for k=1:length(ANSWER)
     if y2(k) == 98,        yn2(j2,1) = 1;   else,     yn2(j2,2) = 1;  end; j2 = j2+1;
     if y3(k) == 98,        yn3(j3,1) = 1;   else,     yn3(j3,2) = 1;  end; j3 = j3+1;
     if y4(k) == 98,        yn4(j4,1) = 1;   else,     yn4(j4,2) = 1;  end; j4 = j4+1;
+    if y5(k) == 98,        yn5(j5,1) = 1;   else,     yn5(j5,2) = 1;  end; j5 = j5+1;
 end
 
 % Confusion matrix
@@ -131,6 +149,7 @@ figure('color','w'); plotconfusion(ANSWERn',yn1'); title('Chi input')
 figure('color','w'); plotconfusion(ANSWERn',yn2'); title('MRMR input')
 figure('color','w'); plotconfusion(ANSWERn',yn3'); title('Ftest input')
 figure('color','w'); plotconfusion(ANSWERn',yn4'); title('relieff input')
+figure('color','w'); plotconfusion(ANSWERn',yn5'); title('fitcen input')
 
 % Accuracy
 Accuracy = {'All input',  sum(trace(confusionmat(ANSWER,y)))/N*100;
@@ -138,6 +157,7 @@ Accuracy = {'All input',  sum(trace(confusionmat(ANSWER,y)))/N*100;
             'MRMR',       sum(trace(confusionmat(ANSWER,y2)))/N*100;
             'F-test',     sum(trace(confusionmat(ANSWER,y3)))/N*100;
             'Relieff',    sum(trace(confusionmat(ANSWER,y4)))/N*100;
+            'fitcen',    sum(trace(confusionmat(ANSWER,y5)))/N*100;
             }
         
 %% [Appendix] Functions

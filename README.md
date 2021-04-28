@@ -13,3 +13,6 @@ O Feature selection algorithms
 
 2. Wrapper type (Still updating)
 - sequentialfs: 
+
+3. Embedded type
+- fitcensemble with oobPermutedPredictorImportance
